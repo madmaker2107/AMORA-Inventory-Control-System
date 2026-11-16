@@ -1,0 +1,29 @@
+# Git & Workspace
+.git
+.github
+.gemini
+.idea
+.vscode
+scratch
+
+# Documentation & Logs
+*.md
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+secrets/
+*.json.key
+
+# Local Data & SQLite files
+backend/data/*.sqlite*
+backend/data/backups/
+*.sqlite*
+
+# Node dependencies
+node_modules
+**/node_modules

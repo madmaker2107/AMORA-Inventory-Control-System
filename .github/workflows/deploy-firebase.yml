@@ -1,0 +1,31 @@
+name: Deploy Frontend to Firebase Hosting
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'index.html'
+      - 'styles.css'
+      - 'app.js'
+      - 'firebase-*.js'
+      - 'firebase.json'
+      - '.github/workflows/deploy-firebase.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Firebase Hosting
+    runs-on: ubuntu-latest
+    if: github.repository == 'madmaker2107/AMORA-Inventory-Control-System'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_AMORA_6134F }}'
+          channelId: live
+          projectId: amora-6134f
+        continue-on-error: true

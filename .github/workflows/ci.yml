@@ -1,0 +1,48 @@
+name: AMORA CI & Pre-Deployment Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Verify & Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install Native Build Tools
+        run: sudo apt-get update && sudo apt-get install -y python3 make g++
+
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: JavaScript Syntax Verification (node --check)
+        run: |
+          node --check app.js
+          node --check firebase-auth.js
+          node --check firebase-config.js
+          node --check firebase-services.js
+          node --check backend/server.js
+          node --check backend/provision-firebase-user.js
+          node --check tests/run-tests.mjs
+
+      - name: Run Automated Test Suite
+        working-directory: backend
+        run: npm test

@@ -1,0 +1,41 @@
+# ==============================================================================
+# AMORA Production & Local Staging Compose Specification
+# ==============================================================================
+# Preserves SQLite database in a persistent named volume across restarts.
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: amora-backend
+    restart: unless-stopped
+    ports:
+      - "4016:4016"
+    environment:
+      - PORT=4016
+      - NODE_ENV=production
+      - ALLOW_LEGACY_AUTH=false
+      - DATABASE_PATH=/app/data/amora.sqlite
+      - CORS_ORIGIN=http://localhost:4016,https://amora-6134f.web.app,https://amora-6134f.firebaseapp.com
+      # Mount service account credentials if running on server:
+      # - GOOGLE_APPLICATION_CREDENTIALS=/app/secrets/amora-firebase-key.json
+    volumes:
+      # Persistent volume for SQLite database and WAL logs
+      - amora-data:/app/data
+      # Uncomment to mount Google Application Credentials in container:
+      # - ./secrets/amora-firebase-key.json:/app/secrets/amora-firebase-key.json:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4016/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  amora-data:
+    name: amora-sqlite-storage
+    driver: local

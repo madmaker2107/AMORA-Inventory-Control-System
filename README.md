@@ -200,3 +200,5 @@ node --check firebase-services.js
 ## License
 
 Private / Proprietary – AMORA Retail Pvt. Ltd. All rights reserved.
+#   A M O R A - I n v e n t o r y - C o n t r o l - S y s t e m  
+ 

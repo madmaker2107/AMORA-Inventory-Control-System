@@ -1,0 +1,145 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userDoc() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function hasRole(roles) { return signedIn() && userDoc().data.role in roles; }
+    function hasStoreClaim() { return signedIn() && request.auth.token.storeId is string; }
+    function sameStore(data) { return hasStoreClaim() && data.storeId is string && data.storeId == request.auth.token.storeId; }
+    function sameExistingStore() { return sameStore(resource.data) && sameStore(request.resource.data) && request.resource.data.storeId == resource.data.storeId; }
+    function validCommon(data, fields) { return sameStore(data) && data.keys().hasAll(fields) && data.createdAt is timestamp && data.updatedAt is timestamp; }
+    function stockRole() { return hasRole(['admin', 'manager', 'stock_manager']); }
+    function managerRole() { return hasRole(['admin', 'manager']); }
+    function cashierRole() { return hasRole(['admin', 'manager', 'cashier']); }
+    function validProduct(data) { return validCommon(data, ['storeId', 'sku', 'name', 'sellingPricePaise', 'purchasePricePaise', 'active']) && data.sku is string && data.name is string && data.sellingPricePaise is int && data.sellingPricePaise >= 0 && data.purchasePricePaise is int && data.purchasePricePaise >= 0 && data.active is bool; }
+    function validCategory(data) { return validCommon(data, ['storeId', 'name', 'active']) && data.name is string && data.active is bool; }
+    function validInventory(data) { return validCommon(data, ['storeId', 'productId', 'availableQuantity', 'reorderLevel']) && data.productId is string && data.availableQuantity is int && data.availableQuantity >= 0 && data.reorderLevel is int && data.reorderLevel >= 0; }
+    function validMovement(data) { return validCommon(data, ['storeId', 'productId', 'type', 'quantity', 'performedBy']) && data.productId is string && data.type is string && data.quantity is int && data.quantity > 0 && data.performedBy is string; }
+    function validSupplier(data) { return validCommon(data, ['storeId', 'name', 'active']) && data.name is string && data.active is bool; }
+    function validPurchase(data) { return validCommon(data, ['storeId', 'orderNumber', 'supplierId', 'items', 'totalPaise']) && data.orderNumber is string && data.supplierId is string && data.items is list && data.totalPaise is int && data.totalPaise >= 0; }
+    function validSale(data) { return validCommon(data, ['storeId', 'invoiceNumber', 'items', 'totalPaise', 'cashierId']) && data.invoiceNumber is string && data.items is list && data.totalPaise is int && data.totalPaise >= 0 && data.cashierId is string; }
+    function validCustomer(data) { return validCommon(data, ['storeId', 'name']) && data.name is string; }
+    function validBatch(data) { return validCommon(data, ['storeId', 'productId', 'batchNumber', 'remainingQuantity']) && data.productId is string && data.batchNumber is string && data.remainingQuantity is int && data.remainingQuantity >= 0; }
+    function validExpense(data) { return validCommon(data, ['storeId', 'category', 'amountPaise', 'paidAt']) && data.category is string && data.amountPaise is int && data.amountPaise >= 0 && data.paidAt is timestamp; }
+    function validPayment(data) { return validCommon(data, ['storeId', 'method', 'amountPaise', 'status']) && data.method is string && data.amountPaise is int && data.amountPaise >= 0 && data.status is string; }
+    function validNotification(data) { return validCommon(data, ['storeId', 'type', 'title', 'message']) && data.type is string && data.title is string && data.message is string; }
+    function validAudit(data) { return validCommon(data, ['storeId', 'actorUid', 'action', 'entity']) && data.actorUid is string && data.action is string && data.entity is string; }
+    function validPrediction(data) { return validCommon(data, ['storeId', 'model', 'prediction', 'confidence']) && data.model is string && data.confidence is number; }
+    function validReport(data) { return validCommon(data, ['storeId', 'type', 'period']) && data.type is string && data.period is string; }
+    function validSetting(data) { return validCommon(data, ['storeId', 'key', 'value']) && data.key is string && data.value is string; }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || (managerRole() && sameStore(resource.data)));
+      allow create: if signedIn() && request.auth.uid == userId
+        && request.resource.data.keys().hasAll(['uid', 'email', 'role', 'storeId', 'active', 'createdAt', 'updatedAt'])
+        && request.resource.data.uid == userId
+        && request.resource.data.role == 'cashier'
+        && request.resource.data.email is string
+        && request.resource.data.storeId == request.auth.token.storeId
+        && request.resource.data.active is bool
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      allow update: if signedIn() && request.auth.uid == userId
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.storeId == resource.data.storeId
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.active == resource.data.active
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if false;
+    }
+
+    match /products/{documentId} {
+      allow read: if validProduct(resource.data);
+      allow create: if stockRole() && validProduct(request.resource.data);
+      allow update: if stockRole() && validProduct(request.resource.data) && sameExistingStore();
+      allow delete: if managerRole() && validProduct(resource.data);
+    }
+    match /categories/{documentId} {
+      allow read: if validCategory(resource.data);
+      allow create: if stockRole() && validCategory(request.resource.data);
+      allow update: if stockRole() && validCategory(request.resource.data) && sameExistingStore();
+      allow delete: if managerRole() && validCategory(resource.data);
+    }
+    match /inventory/{documentId} {
+      allow read: if validInventory(resource.data);
+      allow create: if stockRole() && validInventory(request.resource.data);
+      allow update: if stockRole() && validInventory(request.resource.data) && sameExistingStore();
+      allow delete: if managerRole() && validInventory(resource.data);
+    }
+    match /stock_movements/{documentId} {
+      allow read: if validMovement(resource.data);
+      allow create: if stockRole() && validMovement(request.resource.data);
+      allow update, delete: if false;
+    }
+    match /suppliers/{documentId} {
+      allow read: if validSupplier(resource.data);
+      allow create: if stockRole() && validSupplier(request.resource.data);
+      allow update: if stockRole() && validSupplier(request.resource.data) && sameExistingStore();
+      allow delete: if managerRole() && validSupplier(resource.data);
+    }
+    match /purchase_orders/{documentId} {
+      allow read: if validPurchase(resource.data);
+      allow create: if stockRole() && validPurchase(request.resource.data);
+      allow update: if stockRole() && validPurchase(request.resource.data) && sameExistingStore();
+      allow delete: if managerRole() && validPurchase(resource.data);
+    }
+    match /sales/{documentId} {
+      allow read: if validSale(resource.data);
+      allow create: if cashierRole() && validSale(request.resource.data) && request.resource.data.cashierId == request.auth.uid;
+      allow update, delete: if false;
+    }
+    match /customers/{documentId} {
+      allow read: if validCustomer(resource.data);
+      allow create: if cashierRole() && validCustomer(request.resource.data);
+      allow update: if cashierRole() && validCustomer(request.resource.data) && sameExistingStore();
+      allow delete: if managerRole() && validCustomer(resource.data);
+    }
+    match /batches/{documentId} {
+      allow read: if validBatch(resource.data);
+      allow create: if stockRole() && validBatch(request.resource.data);
+      allow update: if stockRole() && validBatch(request.resource.data) && sameExistingStore();
+      allow delete: if managerRole() && validBatch(resource.data);
+    }
+    match /expenses/{documentId} {
+      allow read: if managerRole() && validExpense(resource.data);
+      allow create: if managerRole() && validExpense(request.resource.data);
+      allow update: if managerRole() && validExpense(request.resource.data) && sameExistingStore();
+      allow delete: if hasRole(['admin']) && validExpense(resource.data);
+    }
+    match /payments/{documentId} {
+      allow read: if cashierRole() && validPayment(resource.data);
+      allow create: if cashierRole() && validPayment(request.resource.data);
+      allow update, delete: if false;
+    }
+    match /notifications/{documentId} {
+      allow read: if signedIn() && validNotification(resource.data);
+      allow create, update: if false;
+      allow delete: if managerRole() && validNotification(resource.data);
+    }
+    match /audit_logs/{documentId} {
+      allow read: if managerRole() && validAudit(resource.data);
+      allow create, update, delete: if false;
+    }
+    match /ai_predictions/{documentId} {
+      allow read: if managerRole() && validPrediction(resource.data);
+      allow create, update, delete: if false;
+    }
+    match /reports/{documentId} {
+      allow read: if managerRole() && validReport(resource.data);
+      allow create: if managerRole() && validReport(request.resource.data);
+      allow update: if managerRole() && validReport(request.resource.data) && sameExistingStore();
+      allow delete: if hasRole(['admin']) && validReport(resource.data);
+    }
+    match /settings/{documentId} {
+      allow read: if managerRole() && validSetting(resource.data);
+      allow create: if managerRole() && validSetting(request.resource.data);
+      allow update: if managerRole() && validSetting(request.resource.data) && sameExistingStore();
+      allow delete: if hasRole(['admin']) && validSetting(resource.data);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,15 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function staff() { return signedIn() && request.auth.token.role in ['admin', 'manager', 'stock_manager']; }
+
+    match /stores/{storeId}/{allPaths=**} {
+      allow read: if signedIn() && request.auth.token.storeId == storeId;
+      allow write: if staff()
+        && request.auth.token.storeId == storeId
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf|text/csv');
+    }
+  }
+}

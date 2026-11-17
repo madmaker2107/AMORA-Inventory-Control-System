@@ -39,6 +39,7 @@ RUN groupadd -r amora && useradd -r -g amora -m amora
 COPY --from=builder /app/node_modules ./node_modules
 COPY backend/package*.json ./
 COPY backend/server.js ./
+COPY backend/db-postgres.js ./
 COPY backend/provision-firebase-user.js ./
 
 # Prepare persistent data directory with non-root ownership

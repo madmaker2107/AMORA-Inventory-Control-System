@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#183b2c">
+  <title>AMORA | Inventory Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>.app-shell.auth-locked{display:none}</style>
+  <style>.product-form-panel{padding-bottom:20px;margin-bottom:18px}.product-form{padding:0 22px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px}.product-form label{display:flex;flex-direction:column;gap:6px;color:#53645a;font-size:11px;font-weight:600;margin-bottom:12px}.product-form textarea{width:100%;resize:vertical}.product-form .button{margin-top:4px}.product-detail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);padding:1px}.product-detail div{display:flex;flex-direction:column;gap:6px;background:#fff;padding:18px 20px}.product-detail strong{color:#8a978e;font-size:10px;text-transform:uppercase;letter-spacing:.08em}.product-detail span{color:#34443a;font-size:13px}.product-link{border:0;background:transparent;text-align:left;padding:0;cursor:pointer}.product-link strong,.product-link small{display:block}.danger-action{color:#bd4d3e}@media(max-width:720px){.form-grid,.product-detail{grid-template-columns:1fr}.product-form{padding:0 16px}}</style>
+</head>
+<body>
+  <section class="auth-screen" id="authScreen">
+    <div class="auth-card">
+      <div class="auth-brand"><div class="brand-mark">A</div><div><strong>AMORA</strong><span>Think Smart. Stock Smarter.</span></div></div>
+      <p class="eyebrow">India · Supermarket control</p>
+      <h1>Welcome back</h1>
+      <p class="auth-copy">Sign in to manage your store, stock and sales.</p>
+      <p class="auth-status" id="authStatus" role="status">Checking authentication...</p>
+      <form id="loginForm">
+        <label for="loginEmail">Email or username</label>
+        <input id="loginEmail" type="email" autocomplete="username" placeholder="name@store.com" required>
+        <label for="loginPassword">Password</label>
+        <div class="password-field">
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" required>
+          <button type="button" id="togglePassword" aria-label="Toggle password visibility">Show</button>
+        </div>
+        <div class="login-options"><label class="remember"><input id="rememberMe" type="checkbox" checked> Remember me</label><button type="button" class="link-button" id="forgotPassword">Forgot password?</button></div>
+        <button class="button primary-button auth-submit" type="submit">Sign in</button>
+        <p class="auth-error" id="loginError" role="alert" aria-live="polite"></p>
+      </form>
+      <div id="emailVerificationCard" hidden>
+        <div class="verification-notice" style="background: #eef6f0; border: 1px solid #cbe3cf; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <h2 style="font: 700 15px Manrope; color: #183b2c; margin: 0 0 6px;">Email verification required</h2>
+          <p style="color: #4a5c51; font-size: 11px; margin: 0 0 8px;">A verification email must be confirmed for <strong id="verificationEmailDisplay"></strong> before store operations can be accessed.</p>
+          <p style="color: #6a7c71; font-size: 10px; margin: 0;">1. Open the verification link sent to your inbox.<br>2. Return here and click <em>"I've verified my email"</em> below.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button type="button" class="button primary-button auth-submit" id="checkVerificationBtn">I've verified my email</button>
+          <button type="button" class="button secondary-button" id="resendVerificationBtn" style="width: 100%; padding: 10px; border: 1px solid #cbe3cf; background: #fff; color: #183b2c; font-weight: 600; border-radius: 6px; cursor: pointer;">Resend verification email</button>
+          <button type="button" class="link-button" id="cancelVerificationBtn" style="margin-top: 6px; text-align: center; color: #6a7c71;">Sign in with a different account</button>
+        </div>
+        <p class="auth-status" id="verificationStatus" role="status" style="margin-top: 10px; font-size: 11px; text-align: center;"></p>
+        <p class="auth-error" id="verificationError" role="alert" aria-live="polite" style="margin-top: 4px; text-align: center;"></p>
+      </div>
+    </div>
+  </section>
+  <div class="app-shell auth-locked">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="brand-mark">A</div><div><strong>AMORA</strong><span>Inventory control</span></div></div>
+      <div class="store-switcher"><span class="store-dot"></span><div><small>Current store · India</small><strong>Greenfield Market</strong></div><span class="chevron">⌄</span></div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <p class="nav-label">Workspace</p>
+        <button class="nav-item active" data-view="dashboard"><span class="nav-icon">▦</span>Overview</button>
+        <button class="nav-item" data-view="inventory-analysis"><span class="nav-icon">◒</span>Inventory analysis</button>
+        <button class="nav-item" data-view="inventory"><span class="nav-icon">▤</span>Inventory <b class="nav-count">8</b></button>
+        <button class="nav-item" data-view="categories"><span class="nav-icon">▧</span>Categories & brands</button>
+        <button class="nav-item" data-view="batches"><span class="nav-icon">◷</span>Batch management</button>
+        <button class="nav-item" data-view="sales"><span class="nav-icon">◫</span>Sales & billing</button>
+        <button class="nav-item" data-view="sales-history"><span class="nav-icon">◒</span>Sales history</button>
+        <button class="nav-item" data-view="sales-returns"><span class="nav-icon">↩</span>Sales returns</button>
+        <button class="nav-item" data-view="purchases"><span class="nav-icon">↙</span>Purchases</button>
+        <button class="nav-item" data-view="purchase-returns"><span class="nav-icon">↪</span>Purchase returns</button>
+        <button class="nav-item" data-view="suppliers"><span class="nav-icon">♧</span>Suppliers</button>
+        <button class="nav-item" data-view="expiry"><span class="nav-icon">◷</span>Expiry watch <b class="nav-count warning">5</b></button>
+        <p class="nav-label secondary-label">Manage</p>
+        <button class="nav-item" data-view="reports"><span class="nav-icon">◒</span>Reports</button>
+        <button class="nav-item" data-view="profit-loss"><span class="nav-icon">₹</span>AI profit & loss</button>
+        <button class="nav-item" data-view="forecast"><span class="nav-icon">⌁</span>AI forecasting</button>
+        <button class="nav-item" data-view="team"><span class="nav-icon">♙</span>Team</button>
+        <button class="nav-item" data-view="customers"><span class="nav-icon">♧</span>Customers</button>
+        <button class="nav-item" data-view="notifications"><span class="nav-icon">♧</span>Notifications <b class="nav-count">3</b></button>
+        <button class="nav-item" data-view="assistant"><span class="nav-icon">✦</span>AI assistant</button>
+        <button class="nav-item" data-view="activity"><span class="nav-icon">◌</span>Activity logs</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <button class="nav-item" data-view="settings"><span class="nav-icon">⚙</span>Settings</button>
+        <div class="profile"><div class="avatar">AK</div><div><strong>Anika Kapoor</strong><span>Admin · Logged in</span></div><button class="logout-button" data-action="logout">Logout</button></div>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="mobile-menu" id="menuToggle" aria-label="Open menu">☰</button>
+        <div class="breadcrumb"><span>Workspace</span><b>/</b><strong id="pageTitle">Overview</strong></div>
+        <div class="top-actions">
+          <label class="search"><span>⌕</span><input id="globalSearch" type="search" placeholder="Search products, invoices..." aria-label="Search"></label>
+          <button class="icon-button notification-button" aria-label="Notifications"><span>♧</span><i></i></button>
+          <button class="user-button"><span class="avatar small">AK</span><span class="user-name">Anika Kapoor</span><span>⌄</span></button>
+        </div>
+      </header>
+
+      <section class="page-content" id="pageContent">
+        <div class="page-heading">
+          <div><p class="eyebrow">Saturday, 15 November 2026</p><h1>Good morning, Anika <span>✦</span></h1><p class="subheading">Here is what is happening across Greenfield Market today.</p></div>
+          <div class="heading-actions"><button class="button secondary-button" id="exportButton">⇩ <span>Export report</span></button><button class="button primary-button" id="saleButton">+ <span>New sale</span></button></div>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric-card revenue"><div class="metric-top"><span>Today's revenue</span><span class="metric-icon">₹</span></div><strong>₹84,250</strong><div class="metric-foot"><span class="trend up">↗ 12.8%</span><span>vs. yesterday</span></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Items in stock</span><span class="metric-icon stock">▤</span></div><strong>12,486</strong><div class="metric-foot"><span class="trend up">↗ 4.2%</span><span>this month</span></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Low stock items</span><span class="metric-icon low">!</span></div><strong>08</strong><div class="metric-foot"><span class="trend down">↘ 2 items</span><span>since yesterday</span></div></article>
+          <article class="metric-card"><div class="metric-top"><span>Active products</span><span class="metric-icon products">✣</span></div><strong>1,284</strong><div class="metric-foot"><span class="trend neutral">• 18 new</span><span>this month</span></div></article>
+        </div>
+
+        <div class="main-grid">
+          <section class="panel sales-panel"><div class="panel-header"><div><h2>Sales overview</h2><p id="salesChartCaption">Revenue performance for the last 7 days</p></div><select id="salesPeriod" aria-label="Sales period"><option value="weekly">Last 7 days</option><option value="monthly">Last 30 days</option></select></div><div class="chart-wrap"><div class="chart-y"><span>₹40k</span><span>₹30k</span><span>₹20k</span><span>₹10k</span><span>₹0</span></div><div class="chart"><div class="grid-line line-1"></div><div class="grid-line line-2"></div><div class="grid-line line-3"></div><div class="grid-line line-4"></div><svg viewBox="0 0 720 230" preserveAspectRatio="none" role="img" aria-label="Sales trend chart"><defs><linearGradient id="fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#b8dfc7" stop-opacity=".65"/><stop offset="1" stop-color="#b8dfc7" stop-opacity="0"/></linearGradient></defs><path id="salesChartArea" class="area" d="M0 178 L720 178 L720 230 L0 230Z"/><path id="salesChartLine" class="line" d="M0 178 L720 178"/><circle id="salesChartDot" cx="720" cy="178" r="5"/></svg><div class="chart-x" id="salesChartLabels"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div></div></div><div class="chart-legend"><span><i class="legend-dot"></i>Live sales revenue</span><span><i class="legend-dot pale"></i>Stored transaction data</span></div></section>
+          <section class="panel alert-panel"><div class="panel-header"><div><h2>Needs attention</h2><p>Items that may need your action</p></div><button class="text-button" data-view="inventory">View all <span>→</span></button></div><div class="alert-list"><button class="alert-row" data-view="inventory"><span class="alert-symbol red">!</span><span><strong>8 items are low in stock</strong><small>Restock before they run out</small></span><span class="row-arrow">→</span></button><button class="alert-row" data-view="expiry"><span class="alert-symbol amber">◷</span><span><strong>5 products expiring soon</strong><small>Within the next 7 days</small></span><span class="row-arrow">→</span></button><button class="alert-row" data-view="purchases"><span class="alert-symbol blue">↙</span><span><strong>3 purchase orders pending</strong><small>Expected delivery this week</small></span><span class="row-arrow">→</span></button><button class="alert-row"><span class="alert-symbol green">✓</span><span><strong>All systems operational</strong><small>Last synced just now</small></span><span class="row-arrow">›</span></button></div></section>
+        </div>
+
+        <div class="bottom-grid"><section class="panel table-panel"><div class="panel-header"><div><h2>Recent sales</h2><p>Your latest transactions across the store</p></div><button class="text-button" data-view="sales">See all sales <span>→</span></button></div><div class="table-scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Items</th><th>Amount</th><th>Payment</th><th>Status</th></tr></thead><tbody id="salesTable"><tr><td><strong>#AM-10482</strong><small>10:42 AM</small></td><td><span class="customer"><span class="customer-avatar peach">RV</span>Ravi Verma</span></td><td>4 items</td><td><strong>₹1,840</strong></td><td>UPI</td><td><span class="status paid">Paid</span></td></tr><tr><td><strong>#AM-10481</strong><small>10:27 AM</small></td><td><span class="customer"><span class="customer-avatar lilac">MP</span>Meera Patel</span></td><td>8 items</td><td><strong>₹3,265</strong></td><td>Card</td><td><span class="status paid">Paid</span></td></tr><tr><td><strong>#AM-10480</strong><small>09:58 AM</small></td><td><span class="customer"><span class="customer-avatar mint">SK</span>Sameer Khan</span></td><td>2 items</td><td><strong>₹620</strong></td><td>Cash</td><td><span class="status paid">Paid</span></td></tr><tr><td><strong>#AM-10479</strong><small>09:41 AM</small></td><td><span class="customer"><span class="customer-avatar blue-avatar">NW</span>Nisha Wadhwa</span></td><td>11 items</td><td><strong>₹4,720</strong></td><td>UPI</td><td><span class="status paid">Paid</span></td></tr></tbody></table></div></section><section class="panel products-panel"><div class="panel-header"><div><h2>Top products</h2><p>Best performers this week</p></div><button class="icon-button" aria-label="More options">•••</button></div><div class="top-product"><span class="product-image milk">▥</span><div><strong>Amul Taaza Milk</strong><small>Dairy products</small><div class="product-bar"><i style="width: 86%"></i></div></div><b>86%</b></div><div class="top-product"><span class="product-image rice">▦</span><div><strong>India Gate Basmati</strong><small>Groceries</small><div class="product-bar"><i style="width: 69%"></i></div></div><b>69%</b></div><div class="top-product"><span class="product-image oil">◐</span><div><strong>Fortune Sunflower Oil</strong><small>Groceries</small><div class="product-bar"><i style="width: 54%"></i></div></div><b>54%</b></div><div class="top-product"><span class="product-image snack">✤</span><div><strong>Lay's Magic Masala</strong><small>Snacks & chocolates</small><div class="product-bar"><i style="width: 42%"></i></div></div><b>42%</b></div></section></div>
+
+        <section class="quick-strip"><div><span class="spark">✦</span><div><strong>Make today count.</strong><p>Keep your shelves ready for every customer.</p></div></div><div class="quick-actions"><button class="quick-button" id="receiveButton"><span>↙</span>Receive stock</button><button class="quick-button" id="productButton"><span>+</span>Add product</button></div></section>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script>
+    window.__AMORA_API_BASE__ = 'https://amora-inventory-control-system.onrender.com/api';
+  </script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -90,16 +90,90 @@ async function auth(req, res, next) {
   if (adminAuth) {
     try {
       const decoded = await adminAuth.verifyIdToken(token);
+      const uid = decoded.uid;
+      const email = typeof decoded.email === 'string' ? decoded.email.trim().toLowerCase() : '';
+      const emailVerified = Boolean(decoded.email_verified);
+
+      // 1. First, search if a database user already possesses this exact firebase_uid
+      const uidRes = await pool.query(
+        'SELECT id, name, email, role, active, firebase_uid FROM users WHERE firebase_uid = $1',
+        [uid]
+      );
+
+      // 2. Also search if a database user possesses this normalized email
+      const emailRes = email
+        ? await pool.query(
+            'SELECT id, name, email, role, active, firebase_uid FROM users WHERE LOWER(TRIM(email)) = $1',
+            [email]
+          )
+        : { rows: [] };
+
+      const userByUid = uidRes.rows[0] || null;
+      const userByEmail = emailRes.rows[0] || null;
+
+      // Conflict Check: UID and Email resolve to two distinct database user accounts
+      if (userByUid && userByEmail && userByUid.id !== userByEmail.id) {
+        return res.status(403).json({ error: 'Identity conflict between UID and email mapping' });
+      }
+
+      // Check for ambiguous duplicate email accounts in DB
+      if (emailRes.rows.length > 1) {
+        return res.status(403).json({ error: 'Ambiguous user identity: multiple accounts match email' });
+      }
+
+      let dbUser = userByUid;
+
+      // If user is not yet linked by UID, evaluate first-time linking via verified email
+      if (!dbUser) {
+        if (!userByEmail) {
+          return res.status(401).json({ error: 'User account not provisioned in database' });
+        }
+
+        // Mandatory Security Check: Reject linking if email is unverified
+        if (!emailVerified) {
+          return res.status(403).json({ error: 'Email address must be verified before account linking' });
+        }
+
+        // Prevent overwriting an existing UID mapping on that account
+        if (userByEmail.firebase_uid && userByEmail.firebase_uid !== uid) {
+          return res.status(403).json({ error: 'Target account is already mapped to a different Firebase identity' });
+        }
+
+        // Atomically link firebase_uid to the verified email account
+        const linkRes = await pool.query(
+          'UPDATE users SET firebase_uid = $1 WHERE id = $2 AND firebase_uid IS NULL RETURNING id, name, email, role, active, firebase_uid',
+          [uid, userByEmail.id]
+        );
+
+        if (linkRes.rows.length === 0) {
+          // Concurrency or already mapped check
+          const recheck = await pool.query('SELECT id, name, email, role, active, firebase_uid FROM users WHERE id = $1', [userByEmail.id]);
+          if (recheck.rows[0]?.firebase_uid !== uid) {
+            return res.status(403).json({ error: 'Failed to safely link account: concurrent conflict detected' });
+          }
+          dbUser = recheck.rows[0];
+        } else {
+          dbUser = linkRes.rows[0];
+        }
+      }
+
+      // Reject inactive users
+      if (!dbUser || Number(dbUser.active) !== 1) {
+        return res.status(401).json({ error: 'User account is inactive or disabled' });
+      }
+
       req.user = {
         ...decoded,
-        id: decoded.uid,
-        uid: decoded.uid,
-        name: decoded.name || decoded.email || decoded.uid,
-        role: decoded.role || 'cashier',
-        storeId: decoded.storeId || 'amora-main'
+        id: dbUser.id,
+        dbId: dbUser.id,
+        uid: uid,
+        firebaseUid: uid,
+        name: dbUser.name || decoded.name || dbUser.email,
+        role: dbUser.role || 'cashier',
+        storeId: 'amora-main'
       };
       return next();
-    } catch {
+    } catch (authError) {
       if (process.env.ALLOW_LEGACY_AUTH === 'true') {
         try {
           req.user = jwt.verify(token, JWT_SECRET);

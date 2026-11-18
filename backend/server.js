@@ -33,8 +33,20 @@ const publicFirebaseConfig = {
 let adminAuth = null;
 try {
   const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON) : null;
-  if (serviceAccount || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    const adminApp = getApps()[0] || initializeAdminApp(serviceAccount ? { credential: cert(serviceAccount) } : undefined);
+  const projectId = process.env.FIREBASE_PROJECT_ID || publicFirebaseConfig.projectId || 'amora-6134f';
+  if (serviceAccount) {
+    const adminApp = getApps()[0] || initializeAdminApp({ credential: cert(serviceAccount), projectId });
+    adminAuth = getAdminAuth(adminApp);
+  } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    try {
+      const adminApp = getApps()[0] || initializeAdminApp({ credential: cert(process.env.GOOGLE_APPLICATION_CREDENTIALS), projectId });
+      adminAuth = getAdminAuth(adminApp);
+    } catch {
+      const adminApp = getApps()[0] || initializeAdminApp({ projectId });
+      adminAuth = getAdminAuth(adminApp);
+    }
+  } else if (projectId) {
+    const adminApp = getApps()[0] || initializeAdminApp({ projectId });
     adminAuth = getAdminAuth(adminApp);
   }
 } catch (error) {
